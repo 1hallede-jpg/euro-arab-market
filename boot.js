@@ -11840,7 +11840,7 @@ var error5 = () => {
         return `Clau inv\xE0lida a ${issue2.origin}`;
       case "invalid_union":
         return "Entrada inv\xE0lida";
-      // Could also be "Tipus d'uniÃ³ invÃ lid" but "Entrada invÃ lida" is more general
+      // Could also be "Tipus d'unió invàlid" but "Entrada invàlida" is more general
       case "invalid_element":
         return `Element inv\xE0lid a ${issue2.origin}`;
       default:
@@ -30880,112 +30880,6 @@ var adminRouter = createRouter({
   })
 });
 
-// api/router.ts
-var appRouter = createRouter({
-  ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
-  auth: authRouter,
-  merchant: merchantRouter,
-  job: jobRouter,
-  search: searchRouter,
-  sindbad: sindbadRouter,
-  admin: adminRouter
-});
-
-// node_modules/hono/dist/utils/cookie.js
-var validCookieNameRegEx = /^[\w!#$%&'*.^`|~+-]+$/;
-var _serialize = (name, value, opt = {}) => {
-  if (!validCookieNameRegEx.test(name)) {
-    throw new Error("Invalid cookie name");
-  }
-  let cookie3 = `${name}=${value}`;
-  if (name.startsWith("__Secure-") && !opt.secure) {
-    throw new Error("__Secure- Cookie must have Secure attributes");
-  }
-  if (name.startsWith("__Host-")) {
-    if (!opt.secure) {
-      throw new Error("__Host- Cookie must have Secure attributes");
-    }
-    if (opt.path !== "/") {
-      throw new Error('__Host- Cookie must have Path attributes with "/"');
-    }
-    if (opt.domain) {
-      throw new Error("__Host- Cookie must not have Domain attributes");
-    }
-  }
-  for (const key of ["domain", "path", "sameSite", "priority"]) {
-    if (opt[key] && /[;\r\n]/.test(opt[key])) {
-      throw new Error(`${key} must not contain ";", "\\r", or "\\n"`);
-    }
-  }
-  if (opt && typeof opt.maxAge === "number" && opt.maxAge >= 0) {
-    if (opt.maxAge > 3456e4) {
-      throw new Error(
-        "Cookies Max-Age SHOULD NOT be greater than 400 days (34560000 seconds) in duration."
-      );
-    }
-    cookie3 += `; Max-Age=${opt.maxAge | 0}`;
-  }
-  if (opt.domain && opt.prefix !== "host") {
-    cookie3 += `; Domain=${opt.domain}`;
-  }
-  if (opt.path) {
-    cookie3 += `; Path=${opt.path}`;
-  }
-  if (opt.expires) {
-    if (opt.expires.getTime() - Date.now() > 3456e7) {
-      throw new Error(
-        "Cookies Expires SHOULD NOT be greater than 400 days (34560000 seconds) in the future."
-      );
-    }
-    cookie3 += `; Expires=${opt.expires.toUTCString()}`;
-  }
-  if (opt.httpOnly) {
-    cookie3 += "; HttpOnly";
-  }
-  if (opt.secure) {
-    cookie3 += "; Secure";
-  }
-  if (opt.sameSite) {
-    cookie3 += `; SameSite=${opt.sameSite.charAt(0).toUpperCase() + opt.sameSite.slice(1)}`;
-  }
-  if (opt.priority) {
-    cookie3 += `; Priority=${opt.priority.charAt(0).toUpperCase() + opt.priority.slice(1)}`;
-  }
-  if (opt.partitioned) {
-    if (!opt.secure) {
-      throw new Error("Partitioned Cookie must have Secure attributes");
-    }
-    cookie3 += "; Partitioned";
-  }
-  return cookie3;
-};
-var serialize3 = (name, value, opt) => {
-  value = encodeURIComponent(value);
-  return _serialize(name, value, opt);
-};
-
-// node_modules/hono/dist/helper/cookie/index.js
-var generateCookie = (name, value, opt) => {
-  let cookie3;
-  if (opt?.prefix === "secure") {
-    cookie3 = serialize3("__Secure-" + name, value, { path: "/", ...opt, secure: true });
-  } else if (opt?.prefix === "host") {
-    cookie3 = serialize3("__Host-" + name, value, {
-      ...opt,
-      path: "/",
-      secure: true,
-      domain: void 0
-    });
-  } else {
-    cookie3 = serialize3(name, value, { path: "/", ...opt });
-  }
-  return cookie3;
-};
-var setCookie = (c, name, value, opt) => {
-  const cookie3 = generateCookie(name, value, opt);
-  c.header("Set-Cookie", cookie3, { append: true });
-};
-
 // node_modules/jose/dist/webapi/lib/buffer_utils.js
 var encoder = new TextEncoder();
 var decoder = new TextDecoder();
@@ -32665,6 +32559,149 @@ function createRemoteJWKSet(url2, options) {
   });
   return remoteJWKSet;
 }
+
+// api/admin-auth-router.ts
+var JWT_SECRET = new TextEncoder().encode(
+  process.env.ADMIN_JWT_SECRET || "euro-arab-market-admin-secret-key-2024"
+);
+var adminAuthRouter = createRouter({
+  // Login with username/password
+  login: publicQuery.input(
+    external_exports.object({
+      username: external_exports.string().min(1),
+      password: external_exports.string().min(1)
+    })
+  ).mutation(async ({ input }) => {
+    const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "EuroArab2024!";
+    if (input.username !== ADMIN_USERNAME || input.password !== ADMIN_PASSWORD) {
+      throw new Error("Invalid credentials");
+    }
+    const token = await new SignJWT({
+      username: input.username,
+      role: "admin"
+    }).setProtectedHeader({ alg: "HS256" }).setExpirationTime("24h").sign(JWT_SECRET);
+    return { token, username: input.username };
+  }),
+  // Verify token
+  verify: publicQuery.input(external_exports.object({ token: external_exports.string() })).query(async ({ input }) => {
+    try {
+      const { payload } = await jwtVerify(input.token, JWT_SECRET, {
+        clockTolerance: 60
+      });
+      return { valid: true, username: payload.username };
+    } catch {
+      return { valid: false, username: "" };
+    }
+  })
+});
+
+// api/router.ts
+var appRouter = createRouter({
+  ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
+  auth: authRouter,
+  merchant: merchantRouter,
+  job: jobRouter,
+  search: searchRouter,
+  sindbad: sindbadRouter,
+  admin: adminRouter,
+  adminAuth: adminAuthRouter
+});
+
+// node_modules/hono/dist/utils/cookie.js
+var validCookieNameRegEx = /^[\w!#$%&'*.^`|~+-]+$/;
+var _serialize = (name, value, opt = {}) => {
+  if (!validCookieNameRegEx.test(name)) {
+    throw new Error("Invalid cookie name");
+  }
+  let cookie3 = `${name}=${value}`;
+  if (name.startsWith("__Secure-") && !opt.secure) {
+    throw new Error("__Secure- Cookie must have Secure attributes");
+  }
+  if (name.startsWith("__Host-")) {
+    if (!opt.secure) {
+      throw new Error("__Host- Cookie must have Secure attributes");
+    }
+    if (opt.path !== "/") {
+      throw new Error('__Host- Cookie must have Path attributes with "/"');
+    }
+    if (opt.domain) {
+      throw new Error("__Host- Cookie must not have Domain attributes");
+    }
+  }
+  for (const key of ["domain", "path", "sameSite", "priority"]) {
+    if (opt[key] && /[;\r\n]/.test(opt[key])) {
+      throw new Error(`${key} must not contain ";", "\\r", or "\\n"`);
+    }
+  }
+  if (opt && typeof opt.maxAge === "number" && opt.maxAge >= 0) {
+    if (opt.maxAge > 3456e4) {
+      throw new Error(
+        "Cookies Max-Age SHOULD NOT be greater than 400 days (34560000 seconds) in duration."
+      );
+    }
+    cookie3 += `; Max-Age=${opt.maxAge | 0}`;
+  }
+  if (opt.domain && opt.prefix !== "host") {
+    cookie3 += `; Domain=${opt.domain}`;
+  }
+  if (opt.path) {
+    cookie3 += `; Path=${opt.path}`;
+  }
+  if (opt.expires) {
+    if (opt.expires.getTime() - Date.now() > 3456e7) {
+      throw new Error(
+        "Cookies Expires SHOULD NOT be greater than 400 days (34560000 seconds) in the future."
+      );
+    }
+    cookie3 += `; Expires=${opt.expires.toUTCString()}`;
+  }
+  if (opt.httpOnly) {
+    cookie3 += "; HttpOnly";
+  }
+  if (opt.secure) {
+    cookie3 += "; Secure";
+  }
+  if (opt.sameSite) {
+    cookie3 += `; SameSite=${opt.sameSite.charAt(0).toUpperCase() + opt.sameSite.slice(1)}`;
+  }
+  if (opt.priority) {
+    cookie3 += `; Priority=${opt.priority.charAt(0).toUpperCase() + opt.priority.slice(1)}`;
+  }
+  if (opt.partitioned) {
+    if (!opt.secure) {
+      throw new Error("Partitioned Cookie must have Secure attributes");
+    }
+    cookie3 += "; Partitioned";
+  }
+  return cookie3;
+};
+var serialize3 = (name, value, opt) => {
+  value = encodeURIComponent(value);
+  return _serialize(name, value, opt);
+};
+
+// node_modules/hono/dist/helper/cookie/index.js
+var generateCookie = (name, value, opt) => {
+  let cookie3;
+  if (opt?.prefix === "secure") {
+    cookie3 = serialize3("__Secure-" + name, value, { path: "/", ...opt, secure: true });
+  } else if (opt?.prefix === "host") {
+    cookie3 = serialize3("__Host-" + name, value, {
+      ...opt,
+      path: "/",
+      secure: true,
+      domain: void 0
+    });
+  } else {
+    cookie3 = serialize3(name, value, { path: "/", ...opt });
+  }
+  return cookie3;
+};
+var setCookie = (c, name, value, opt) => {
+  const cookie3 = generateCookie(name, value, opt);
+  c.header("Set-Cookie", cookie3, { append: true });
+};
 
 // api/kimi/auth.ts
 var cookie2 = __toESM(require_dist(), 1);
