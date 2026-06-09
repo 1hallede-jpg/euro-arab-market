@@ -11840,7 +11840,7 @@ var error5 = () => {
         return `Clau inv\xE0lida a ${issue2.origin}`;
       case "invalid_union":
         return "Entrada inv\xE0lida";
-      // Could also be "Tipus d'unió invàlid" but "Entrada invàlida" is more general
+      // Could also be "Tipus d'uniÃ³ invÃ lid" but "Entrada invÃ lida" is more general
       case "invalid_element":
         return `Element inv\xE0lid a ${issue2.origin}`;
       default:
