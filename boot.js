@@ -22199,7 +22199,7 @@ var noop3 = () => {
 function Subscribe(postgres2, options) {
   const subscribers = /* @__PURE__ */ new Map(), slot = "postgresjs_" + Math.random().toString(36).slice(2), state = {};
   let connection2, stream, ended = false;
-  const sql2 = subscribe.sql = postgres2({
+  const sql3 = subscribe.sql = postgres2({
     ...options,
     transform: { column: {}, value: {}, row: {} },
     max: 1,
@@ -22215,18 +22215,18 @@ function Subscribe(postgres2, options) {
         return;
       stream = null;
       state.pid = state.secret = void 0;
-      connected(await init(sql2, slot, options.publications));
+      connected(await init(sql3, slot, options.publications));
       subscribers.forEach((event) => event.forEach(({ onsubscribe }) => onsubscribe()));
     },
     no_subscribe: true
   });
-  const end = sql2.end, close = sql2.close;
-  sql2.end = async () => {
+  const end = sql3.end, close = sql3.close;
+  sql3.end = async () => {
     ended = true;
     stream && await new Promise((r) => (stream.once("close", r), stream.end()));
     return end();
   };
-  sql2.close = async () => {
+  sql3.close = async () => {
     stream && await new Promise((r) => (stream.once("close", r), stream.end()));
     return close();
   };
@@ -22234,7 +22234,7 @@ function Subscribe(postgres2, options) {
   async function subscribe(event, fn, onsubscribe = noop3, onerror = noop3) {
     event = parseEvent(event);
     if (!connection2)
-      connection2 = init(sql2, slot, options.publications);
+      connection2 = init(sql3, slot, options.publications);
     const subscriber = { fn, onsubscribe };
     const fns = subscribers.has(event) ? subscribers.get(event).add(subscriber) : subscribers.set(event, /* @__PURE__ */ new Set([subscriber])).get(event);
     const unsubscribe = () => {
@@ -22245,7 +22245,7 @@ function Subscribe(postgres2, options) {
       connected(x);
       onsubscribe();
       stream && stream.on("error", onerror);
-      return { unsubscribe, state, sql: sql2 };
+      return { unsubscribe, state, sql: sql3 };
     });
   }
   function connected(x) {
@@ -22253,14 +22253,14 @@ function Subscribe(postgres2, options) {
     state.pid = x.state.pid;
     state.secret = x.state.secret;
   }
-  async function init(sql3, slot2, publications) {
+  async function init(sql4, slot2, publications) {
     if (!publications)
       throw new Error("Missing publication names");
-    const xs = await sql3.unsafe(
+    const xs = await sql4.unsafe(
       `CREATE_REPLICATION_SLOT ${slot2} TEMPORARY LOGICAL pgoutput NOEXPORT_SNAPSHOT`
     );
     const [x] = xs;
-    const stream2 = await sql3.unsafe(
+    const stream2 = await sql4.unsafe(
       `START_REPLICATION SLOT ${slot2} LOGICAL ${x.consistent_point} (proto_version '1', publication_names '${publications}')`
     ).writable();
     const state2 = {
@@ -22268,14 +22268,14 @@ function Subscribe(postgres2, options) {
     };
     stream2.on("data", data);
     stream2.on("error", error48);
-    stream2.on("close", sql3.close);
+    stream2.on("close", sql4.close);
     return { stream: stream2, state: xs.state };
     function error48(e) {
       console.error("Unexpected error during logical streaming - reconnecting", e);
     }
     function data(x2) {
       if (x2[0] === 119) {
-        parse4(x2.subarray(25), state2, sql3.options.parsers, handle, options.transform);
+        parse4(x2.subarray(25), state2, sql4.options.parsers, handle, options.transform);
       } else if (x2[0] === 107 && x2[17]) {
         state2.lsn = x2.subarray(1, 9);
         pong();
@@ -22407,22 +22407,22 @@ function parseEvent(x) {
 
 // node_modules/postgres/src/large.js
 import Stream2 from "stream";
-function largeObject(sql2, oid, mode = 131072 | 262144) {
+function largeObject(sql3, oid, mode = 131072 | 262144) {
   return new Promise(async (resolve, reject) => {
-    await sql2.begin(async (sql3) => {
+    await sql3.begin(async (sql4) => {
       let finish;
-      !oid && ([{ oid }] = await sql3`select lo_creat(-1) as oid`);
-      const [{ fd }] = await sql3`select lo_open(${oid}, ${mode}) as fd`;
+      !oid && ([{ oid }] = await sql4`select lo_creat(-1) as oid`);
+      const [{ fd }] = await sql4`select lo_open(${oid}, ${mode}) as fd`;
       const lo = {
         writable,
         readable,
-        close: () => sql3`select lo_close(${fd})`.then(finish),
-        tell: () => sql3`select lo_tell64(${fd})`,
-        read: (x) => sql3`select loread(${fd}, ${x}) as data`,
-        write: (x) => sql3`select lowrite(${fd}, ${x})`,
-        truncate: (x) => sql3`select lo_truncate64(${fd}, ${x})`,
-        seek: (x, whence = 0) => sql3`select lo_lseek64(${fd}, ${x}, ${whence})`,
-        size: () => sql3`
+        close: () => sql4`select lo_close(${fd})`.then(finish),
+        tell: () => sql4`select lo_tell64(${fd})`,
+        read: (x) => sql4`select loread(${fd}, ${x}) as data`,
+        write: (x) => sql4`select lowrite(${fd}, ${x})`,
+        truncate: (x) => sql4`select lo_truncate64(${fd}, ${x})`,
+        seek: (x, whence = 0) => sql4`select lo_lseek64(${fd}, ${x}, ${whence})`,
+        size: () => sql4`
           select
             lo_lseek64(${fd}, location, 0) as position,
             seek.size
@@ -22497,12 +22497,12 @@ function Postgres(a, b2) {
   let ending = false;
   const queries = queue_default(), connecting = queue_default(), reserved = queue_default(), closed = queue_default(), ended = queue_default(), open = queue_default(), busy = queue_default(), full = queue_default(), queues = { connecting, reserved, closed, ended, open, busy, full };
   const connections = [...Array(options.max)].map(() => connection_default(options, queues, { onopen, onend, onclose }));
-  const sql2 = Sql(handler);
-  Object.assign(sql2, {
+  const sql3 = Sql(handler);
+  Object.assign(sql3, {
     get parameters() {
       return options.parameters;
     },
-    largeObject: largeObject.bind(null, sql2),
+    largeObject: largeObject.bind(null, sql3),
     subscribe,
     CLOSE,
     END: CLOSE,
@@ -22514,14 +22514,14 @@ function Postgres(a, b2) {
     close,
     end
   });
-  return sql2;
+  return sql3;
   function Sql(handler2) {
     handler2.debug = options.debug;
     Object.entries(options.types).reduce((acc, [name, type]) => {
       acc[name] = (x) => new Parameter(x, type.to);
       return acc;
     }, typed);
-    Object.assign(sql3, {
+    Object.assign(sql4, {
       types: typed,
       typed,
       unsafe,
@@ -22530,11 +22530,11 @@ function Postgres(a, b2) {
       json: json3,
       file: file2
     });
-    return sql3;
+    return sql4;
     function typed(value, type) {
       return new Parameter(value, type);
     }
-    function sql3(strings, ...args) {
+    function sql4(strings, ...args) {
       const query = strings && Array.isArray(strings.raw) ? new Query(strings, args, handler2, cancel) : typeof strings === "string" && !args.length ? new Identifier(options.transform.column.to ? options.transform.column.to(strings) : strings) : new Builder(strings, args);
       return query;
     }
@@ -22565,7 +22565,7 @@ function Postgres(a, b2) {
   }
   async function listen(name, fn, onlisten) {
     const listener = { fn, onlisten };
-    const sql3 = listen.sql || (listen.sql = Postgres({
+    const sql4 = listen.sql || (listen.sql = Postgres({
       ...options,
       max: 1,
       idle_timeout: null,
@@ -22589,7 +22589,7 @@ function Postgres(a, b2) {
       listener.onlisten && listener.onlisten();
       return { state: result2.state, unlisten };
     }
-    channels[name] = { result: sql3`listen ${sql3.unsafe('"' + name.replace(/"/g, '""') + '"')}`, listeners: [listener] };
+    channels[name] = { result: sql4`listen ${sql4.unsafe('"' + name.replace(/"/g, '""') + '"')}`, listeners: [listener] };
     const result = await channels[name].result;
     listener.onlisten && listener.onlisten();
     return { state: result.state, unlisten };
@@ -22600,11 +22600,11 @@ function Postgres(a, b2) {
       if (channels[name].listeners.length)
         return;
       delete channels[name];
-      return sql3`unlisten ${sql3.unsafe('"' + name.replace(/"/g, '""') + '"')}`;
+      return sql4`unlisten ${sql4.unsafe('"' + name.replace(/"/g, '""') + '"')}`;
     }
   }
   async function notify(channel, payload) {
-    return await sql2`select pg_notify(${channel}, ${"" + payload})`;
+    return await sql3`select pg_notify(${channel}, ${"" + payload})`;
   }
   async function reserve() {
     const queue = queue_default();
@@ -22616,12 +22616,12 @@ function Postgres(a, b2) {
     move(c, reserved);
     c.reserved = () => queue.length ? c.execute(queue.shift()) : move(c, reserved);
     c.reserved.release = true;
-    const sql3 = Sql(handler2);
-    sql3.release = () => {
+    const sql4 = Sql(handler2);
+    sql4.release = () => {
       c.reserved = null;
       onopen(c);
     };
-    return sql3;
+    return sql4;
     function handler2(q) {
       c.queue === full ? queue.push(q) : c.execute(q) || move(c, full);
     }
@@ -22631,7 +22631,7 @@ function Postgres(a, b2) {
     const queries2 = queue_default();
     let savepoints = 0, connection2, prepare = null;
     try {
-      await sql2.unsafe("begin " + options2.replace(/[^a-z ]/ig, ""), [], { onexecute }).execute();
+      await sql3.unsafe("begin " + options2.replace(/[^a-z ]/ig, ""), [], { onexecute }).execute();
       return await Promise.race([
         scope(connection2, fn),
         new Promise((_, reject) => connection2.onclose = reject)
@@ -22640,29 +22640,29 @@ function Postgres(a, b2) {
       throw error48;
     }
     async function scope(c, fn2, name) {
-      const sql3 = Sql(handler2);
-      sql3.savepoint = savepoint;
-      sql3.prepare = (x) => prepare = x.replace(/[^a-z0-9$-_. ]/gi);
+      const sql4 = Sql(handler2);
+      sql4.savepoint = savepoint;
+      sql4.prepare = (x) => prepare = x.replace(/[^a-z0-9$-_. ]/gi);
       let uncaughtError, result;
-      name && await sql3`savepoint ${sql3(name)}`;
+      name && await sql4`savepoint ${sql4(name)}`;
       try {
         result = await new Promise((resolve, reject) => {
-          const x = fn2(sql3);
+          const x = fn2(sql4);
           Promise.resolve(Array.isArray(x) ? Promise.all(x) : x).then(resolve, reject);
         });
         if (uncaughtError)
           throw uncaughtError;
       } catch (e) {
-        await (name ? sql3`rollback to ${sql3(name)}` : sql3`rollback`);
+        await (name ? sql4`rollback to ${sql4(name)}` : sql4`rollback`);
         throw e instanceof PostgresError && e.code === "25P02" && uncaughtError || e;
       }
       if (!name) {
-        prepare ? await sql3`prepare transaction '${sql3.unsafe(prepare)}'` : await sql3`commit`;
+        prepare ? await sql4`prepare transaction '${sql4.unsafe(prepare)}'` : await sql4`commit`;
       }
       return result;
       function savepoint(name2, fn3) {
         if (name2 && Array.isArray(name2.raw))
-          return savepoint((sql4) => sql4.apply(sql4, arguments));
+          return savepoint((sql5) => sql5.apply(sql5, arguments));
         arguments.length === 1 && (fn3 = name2, name2 = null);
         return scope(c, fn3, "s" + savepoints++ + (name2 ? "_" + name2 : ""));
       }
@@ -23572,10 +23572,10 @@ function pgEnumObjectWithSchema(enumName, values2, schema) {
 // node_modules/drizzle-orm/subquery.js
 var Subquery = class {
   static [entityKind] = "Subquery";
-  constructor(sql2, fields, alias, isWith = false, usedTables = []) {
+  constructor(sql3, fields, alias, isWith = false, usedTables = []) {
     this._ = {
       brand: "Subquery",
-      sql: sql2,
+      sql: sql3,
       selectedFields: fields,
       alias,
       isWith,
@@ -23973,19 +23973,19 @@ function sql(strings, ...params) {
   }
   return new SQL(queryChunks);
 }
-((sql2) => {
+((sql22) => {
   function empty() {
     return new SQL([]);
   }
-  sql2.empty = empty;
+  sql22.empty = empty;
   function fromList(list) {
     return new SQL(list);
   }
-  sql2.fromList = fromList;
+  sql22.fromList = fromList;
   function raw2(str) {
     return new SQL([new StringChunk(str)]);
   }
-  sql2.raw = raw2;
+  sql22.raw = raw2;
   function join(chunks, separator) {
     const result = [];
     for (const [i, chunk] of chunks.entries()) {
@@ -23996,24 +23996,24 @@ function sql(strings, ...params) {
     }
     return new SQL(result);
   }
-  sql2.join = join;
+  sql22.join = join;
   function identifier(value) {
     return new Name(value);
   }
-  sql2.identifier = identifier;
+  sql22.identifier = identifier;
   function placeholder2(name2) {
     return new Placeholder(name2);
   }
-  sql2.placeholder = placeholder2;
+  sql22.placeholder = placeholder2;
   function param2(value, encoder2) {
     return new Param(value, encoder2);
   }
-  sql2.param = param2;
+  sql22.param = param2;
 })(sql || (sql = {}));
 ((SQL2) => {
   class Aliased {
-    constructor(sql2, fieldAlias) {
-      this.sql = sql2;
+    constructor(sql22, fieldAlias) {
+      this.sql = sql22;
       this.fieldAlias = fieldAlias;
     }
     static [entityKind] = "SQL.Aliased";
@@ -26716,8 +26716,8 @@ var PgDialect = class {
       return "none";
     }
   }
-  sqlToQuery(sql2, invokeSource) {
-    return sql2.toQuery({
+  sqlToQuery(sql22, invokeSource) {
+    return sql22.toQuery({
       casing: this.casing,
       escapeName: this.escapeName,
       escapeParam: this.escapeParam,
@@ -29076,10 +29076,10 @@ var PgRelationalQuery = class extends QueryPromise {
 
 // node_modules/drizzle-orm/pg-core/query-builders/raw.js
 var PgRaw = class extends QueryPromise {
-  constructor(execute, sql2, query, mapBatchResult) {
+  constructor(execute, sql3, query, mapBatchResult) {
     super();
     this.execute = execute;
-    this.sql = sql2;
+    this.sql = sql3;
     this.query = query;
     this.mapBatchResult = mapBatchResult;
   }
@@ -29399,8 +29399,8 @@ var NoopCache = class extends Cache {
   async onMutate(_params) {
   }
 };
-async function hashQuery(sql2, params) {
-  const dataToHash = `${sql2}-${JSON.stringify(params)}`;
+async function hashQuery(sql3, params) {
+  const dataToHash = `${sql3}-${JSON.stringify(params)}`;
   const encoder2 = new TextEncoder();
   const data = encoder2.encode(dataToHash);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -29533,8 +29533,8 @@ var PgSession = class {
     ).all();
   }
   /** @internal */
-  async count(sql2, token) {
-    const res = await this.execute(sql2, token);
+  async count(sql22, token) {
+    const res = await this.execute(sql22, token);
     return Number(
       res[0]["count"]
     );
@@ -29803,13 +29803,14 @@ var env = {
 // db/schema.ts
 var schema_exports = {};
 __export(schema_exports, {
-  categories: () => categories,
   chatMessages: () => chatMessages,
+  claims: () => claims,
   favorites: () => favorites,
   jobs: () => jobs,
   merchants: () => merchants,
   reviews: () => reviews,
   searchLogs: () => searchLogs,
+  subscriptions: () => subscriptions,
   users: () => users
 });
 var roleEnum = pgEnum("role", ["user", "admin"]);
@@ -29824,9 +29825,23 @@ var merchantCategoryEnum = pgEnum("merchant_category", [
   "clothing",
   "electronics",
   "pharmacy",
+  "halal_grocery",
+  "shisha_lounge",
+  "travel_agency",
+  "money_transfer",
+  "mosque",
+  "cultural_center",
+  "car_dealer",
+  "repair_shop",
   "other"
 ]);
-var merchantStatusEnum = pgEnum("merchant_status", ["pending", "active", "suspended", "rejected"]);
+var merchantStatusEnum = pgEnum("merchant_status", [
+  "pending",
+  "active",
+  "suspended",
+  "rejected",
+  "claimed"
+]);
 var jobCategoryEnum = pgEnum("job_category", [
   "construction",
   "driving",
@@ -29844,12 +29859,43 @@ var jobCategoryEnum = pgEnum("job_category", [
   "education",
   "other"
 ]);
-var jobTypeEnum = pgEnum("job_type", ["full_time", "part_time", "contract", "freelance", "temporary"]);
-var experienceLevelEnum = pgEnum("experience_level", ["entry", "mid", "senior", "expert"]);
-var jobStatusEnum = pgEnum("job_status", ["open", "closed", "filled", "paused"]);
-var categoryTypeEnum = pgEnum("category_type", ["merchant", "job"]);
+var jobTypeEnum = pgEnum("job_type", [
+  "full_time",
+  "part_time",
+  "contract",
+  "freelance",
+  "temporary"
+]);
+var experienceLevelEnum = pgEnum("experience_level", [
+  "entry",
+  "mid",
+  "senior",
+  "expert"
+]);
+var jobStatusEnum = pgEnum("job_status", [
+  "open",
+  "closed",
+  "filled",
+  "paused"
+]);
 var chatRoleEnum = pgEnum("chat_role", ["user", "assistant"]);
 var searchTypeEnum = pgEnum("search_type", ["merchant", "job", "general"]);
+var subscriptionStatusEnum = pgEnum("subscription_status", [
+  "active",
+  "expired",
+  "cancelled",
+  "trial"
+]);
+var subscriptionPlanEnum = pgEnum("subscription_plan", [
+  "basic",
+  "premium",
+  "featured"
+]);
+var claimStatusEnum = pgEnum("claim_status", [
+  "pending",
+  "approved",
+  "rejected"
+]);
 var users = pgTable("users", {
   id: serial("id").primaryKey(),
   unionId: varchar("unionId", { length: 255 }).notNull().unique(),
@@ -29862,33 +29908,73 @@ var users = pgTable("users", {
   lastSignInAt: timestamp("lastSignInAt").defaultNow().notNull()
 });
 var merchants = pgTable("merchants", {
+  // Basic Info
   id: serial("id").primaryKey(),
   userId: bigint4("userId", { mode: "number" }).references(() => users.id),
+  // Business Name
   businessName: varchar("businessName", { length: 255 }).notNull(),
   businessNameAr: varchar("businessNameAr", { length: 255 }),
+  slug: varchar("slug", { length: 255 }).unique(),
+  // Description
   description: text("description"),
   descriptionAr: text("descriptionAr"),
+  shortDescription: varchar("shortDescription", { length: 500 }),
+  // Category
   category: merchantCategoryEnum("category").notNull(),
   subcategory: varchar("subcategory", { length: 100 }),
+  tags: text("tags"),
+  // Media (Images)
   logo: text("logo"),
   coverImage: text("coverImage"),
+  galleryImages: jsonb("galleryImages").default("[]"),
+  // Contact
   phone: varchar("phone", { length: 50 }),
   whatsapp: varchar("whatsapp", { length: 50 }),
   email: varchar("email", { length: 320 }),
   website: varchar("website", { length: 255 }),
+  // Social Media
+  facebookUrl: text("facebookUrl"),
+  instagramUrl: text("instagramUrl"),
+  tiktokUrl: text("tiktokUrl"),
+  youtubeUrl: text("youtubeUrl"),
+  // Address
   country: varchar("country", { length: 100 }).notNull(),
   city: varchar("city", { length: 100 }).notNull(),
   address: text("address"),
+  addressAr: text("addressAr"),
   postalCode: varchar("postalCode", { length: 20 }),
+  neighborhood: varchar("neighborhood", { length: 100 }),
+  // Location (Google Maps)
   latitude: decimal("latitude", { precision: 10, scale: 8 }),
   longitude: decimal("longitude", { precision: 11, scale: 8 }),
-  openingHours: jsonb("openingHours"),
+  googleMapsUrl: text("googleMapsUrl"),
+  // Opening Hours (Yelp-style)
+  openingHours: jsonb("openingHours").default("{}"),
+  isOpen24Hours: boolean4("isOpen24Hours").default(false),
+  // Features & Amenities
+  amenities: jsonb("amenities").default("[]"),
+  features: jsonb("features").default("[]"),
+  // Payment Methods
+  paymentMethods: jsonb("paymentMethods").default("[]"),
+  acceptsCash: boolean4("acceptsCash").default(true),
+  acceptsCard: boolean4("acceptsCard").default(false),
+  // Pricing
+  priceRange: varchar("priceRange", { length: 10 }).default("$$"),
+  // Status
   status: merchantStatusEnum("status").default("pending").notNull(),
   isVerified: boolean4("isVerified").default(false),
+  isFeatured: boolean4("isFeatured").default(false),
+  // Rating
   rating: decimal("rating", { precision: 2, scale: 1 }).default("0.0"),
   reviewCount: integer2("reviewCount").default(0),
-  slug: varchar("slug", { length: 255 }).unique(),
-  tags: text("tags"),
+  // SEO
+  metaTitle: varchar("metaTitle", { length: 255 }),
+  metaDescription: text("metaDescription"),
+  keywords: text("keywords"),
+  // Claim Info
+  claimedBy: bigint4("claimedBy", { mode: "number" }).references(() => users.id),
+  claimedAt: timestamp("claimedAt"),
+  // Timestamps
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => /* @__PURE__ */ new Date())
 });
@@ -29897,6 +29983,7 @@ var jobs = pgTable("jobs", {
   userId: bigint4("userId", { mode: "number" }).references(() => users.id),
   title: varchar("title", { length: 255 }).notNull(),
   titleAr: varchar("titleAr", { length: 255 }),
+  companyName: varchar("companyName", { length: 255 }),
   description: text("description").notNull(),
   descriptionAr: text("descriptionAr"),
   category: jobCategoryEnum("category").notNull(),
@@ -29930,15 +30017,40 @@ var reviews = pgTable("reviews", {
   isVerified: boolean4("isVerified").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
-var categories = pgTable("categories", {
+var subscriptions = pgTable("subscriptions", {
   id: serial("id").primaryKey(),
-  name: varchar("name", { length: 100 }).notNull(),
-  nameAr: varchar("nameAr", { length: 100 }),
-  type: categoryTypeEnum("type").notNull(),
-  icon: varchar("icon", { length: 50 }),
-  color: varchar("color", { length: 20 }),
-  sortOrder: integer2("sortOrder").default(0),
-  isActive: boolean4("isActive").default(true),
+  userId: bigint4("userId", { mode: "number" }).references(() => users.id).notNull(),
+  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants.id).notNull(),
+  plan: subscriptionPlanEnum("plan").default("basic").notNull(),
+  status: subscriptionStatusEnum("status").default("trial").notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).default("EUR"),
+  billingCycle: varchar("billingCycle", { length: 20 }).default("monthly"),
+  // monthly, yearly
+  startedAt: timestamp("startedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  cancelledAt: timestamp("cancelledAt"),
+  paymentMethod: varchar("paymentMethod", { length: 50 }),
+  // paypal, stripe
+  paymentId: varchar("paymentId", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => /* @__PURE__ */ new Date())
+});
+var claims = pgTable("claims", {
+  id: serial("id").primaryKey(),
+  userId: bigint4("userId", { mode: "number" }).references(() => users.id).notNull(),
+  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants.id).notNull(),
+  status: claimStatusEnum("status").default("pending").notNull(),
+  fullName: varchar("fullName", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  proofDocument: text("proofDocument"),
+  // URL to uploaded document
+  businessRegistration: text("businessRegistration"),
+  message: text("message"),
+  reviewedBy: bigint4("reviewedBy", { mode: "number" }).references(() => users.id),
+  reviewedAt: timestamp("reviewedAt"),
+  rejectionReason: text("rejectionReason"),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
 var chatMessages = pgTable("chat_messages", {
@@ -30152,7 +30264,7 @@ var merchantRouter = createRouter({
   // Get categories with counts
   categories: publicQuery.query(async () => {
     const db = getDb();
-    const categories2 = [
+    const categories = [
       { id: 1, name: "\u0645\u0637\u0627\u0639\u0645 \u0639\u0631\u0628\u064A\u0629", nameEn: "restaurant", icon: "Utensils", color: "#ef4444", count: 0 },
       { id: 2, name: "\u0633\u0648\u0628\u0631\u0645\u0627\u0631\u0643\u062A \u062D\u0644\u0627\u0644", nameEn: "supermarket", icon: "ShoppingCart", color: "#22c55e", count: 0 },
       { id: 3, name: "\u062D\u0644\u0648\u064A\u0627\u062A \u0634\u0631\u0642\u064A\u0629", nameEn: "sweets", icon: "Cake", color: "#f59e0b", count: 0 },
@@ -30164,11 +30276,11 @@ var merchantRouter = createRouter({
       { id: 9, name: "\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A\u0627\u062A", nameEn: "electronics", icon: "Smartphone", color: "#06b6d4", count: 0 },
       { id: 10, name: "\u0635\u064A\u062F\u0644\u064A\u0627\u062A", nameEn: "pharmacy", icon: "Pill", color: "#10b981", count: 0 }
     ];
-    for (const cat of categories2) {
+    for (const cat of categories) {
       const result = await db.select({ count: sql`count(*)` }).from(merchants).where(and(eq(merchants.category, cat.nameEn), eq(merchants.status, "active")));
       cat.count = result[0]?.count || 0;
     }
-    return categories2;
+    return categories;
   }),
   // Get cities list
   cities: publicQuery.query(async () => {
@@ -30306,7 +30418,7 @@ var jobRouter = createRouter({
   // Get job categories
   categories: publicQuery.query(async () => {
     const db = getDb();
-    const categories2 = [
+    const categories = [
       { id: 1, name: "\u0628\u0646\u0627\u0621", nameEn: "construction", icon: "HardHat", color: "#f59e0b", count: 0 },
       { id: 2, name: "\u0642\u064A\u0627\u062F\u0629", nameEn: "driving", icon: "Car", color: "#3b82f6", count: 0 },
       { id: 3, name: "\u062A\u0635\u0648\u064A\u0631", nameEn: "photography", icon: "Camera", color: "#8b5cf6", count: 0 },
@@ -30323,11 +30435,11 @@ var jobRouter = createRouter({
       { id: 14, name: "\u062A\u0639\u0644\u064A\u0645", nameEn: "education", icon: "GraduationCap", color: "#3b82f6", count: 0 },
       { id: 15, name: "\u0623\u062E\u0631\u0649", nameEn: "other", icon: "Briefcase", color: "#6b7280", count: 0 }
     ];
-    for (const cat of categories2) {
+    for (const cat of categories) {
       const result = await db.select({ count: sql`count(*)` }).from(jobs).where(and(eq(jobs.category, cat.nameEn), eq(jobs.status, "open")));
       cat.count = result[0]?.count || 0;
     }
-    return categories2;
+    return categories;
   }),
   // Get recent jobs
   recent: publicQuery.input(external_exports.object({ limit: external_exports.number().default(6) }).optional()).query(async ({ input }) => {
@@ -32596,6 +32708,166 @@ var adminAuthRouter = createRouter({
   })
 });
 
+// api/subscription-router.ts
+var subscriptionRouter = createRouter({
+  // Create subscription
+  create: publicQuery.input(
+    external_exports.object({
+      userId: external_exports.number(),
+      merchantId: external_exports.number(),
+      plan: external_exports.enum(["basic", "premium", "featured"]).default("basic"),
+      billingCycle: external_exports.enum(["monthly", "yearly"]).default("monthly"),
+      price: external_exports.string(),
+      paymentMethod: external_exports.string().optional(),
+      paymentId: external_exports.string().optional()
+    })
+  ).mutation(async ({ input }) => {
+    const db = getDb();
+    const now = /* @__PURE__ */ new Date();
+    const expiresAt = new Date(now);
+    if (input.billingCycle === "yearly") {
+      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+    } else {
+      expiresAt.setMonth(expiresAt.getMonth() + 1);
+    }
+    const result = await db.insert(subscriptions).values({
+      ...input,
+      status: "active",
+      expiresAt,
+      createdAt: now,
+      updatedAt: now
+    }).returning({ id: subscriptions.id });
+    return result[0];
+  }),
+  // Get merchant subscription
+  getByMerchant: publicQuery.input(external_exports.object({ merchantId: external_exports.number() })).query(async ({ input }) => {
+    const db = getDb();
+    return db.select().from(subscriptions).where(eq(subscriptions.merchantId, input.merchantId)).orderBy(desc(subscriptions.createdAt)).limit(1);
+  }),
+  // Check if subscription is active
+  checkStatus: publicQuery.input(external_exports.object({ merchantId: external_exports.number() })).query(async ({ input }) => {
+    const db = getDb();
+    const sub = await db.select().from(subscriptions).where(
+      and(
+        eq(subscriptions.merchantId, input.merchantId),
+        eq(subscriptions.status, "active")
+      )
+    ).orderBy(desc(subscriptions.createdAt)).limit(1);
+    if (!sub[0]) return { isActive: false, plan: null, expiresAt: null };
+    const now = /* @__PURE__ */ new Date();
+    const isActive = sub[0].status === "active" && new Date(sub[0].expiresAt) > now;
+    return {
+      isActive,
+      plan: sub[0].plan,
+      expiresAt: sub[0].expiresAt,
+      status: isActive ? sub[0].status : "expired"
+    };
+  }),
+  // Cancel subscription
+  cancel: publicQuery.input(external_exports.object({ id: external_exports.number() })).mutation(async ({ input }) => {
+    const db = getDb();
+    await db.update(subscriptions).set({ status: "cancelled", cancelledAt: /* @__PURE__ */ new Date(), updatedAt: /* @__PURE__ */ new Date() }).where(eq(subscriptions.id, input.id));
+    return { success: true };
+  }),
+  // List all subscriptions (admin)
+  list: publicQuery.input(external_exports.object({ status: external_exports.string().optional() }).optional()).query(async ({ input }) => {
+    const db = getDb();
+    const conditions = [];
+    if (input?.status) {
+      conditions.push(eq(subscriptions.status, input.status));
+    }
+    return db.select().from(subscriptions).where(conditions.length > 0 ? and(...conditions) : void 0).orderBy(desc(subscriptions.createdAt));
+  })
+});
+
+// api/claim-router.ts
+var claimRouter = createRouter({
+  // Submit claim request
+  create: publicQuery.input(
+    external_exports.object({
+      userId: external_exports.number(),
+      merchantId: external_exports.number(),
+      fullName: external_exports.string().min(1),
+      email: external_exports.string().email(),
+      phone: external_exports.string().optional(),
+      proofDocument: external_exports.string().optional(),
+      businessRegistration: external_exports.string().optional(),
+      message: external_exports.string().optional()
+    })
+  ).mutation(async ({ input }) => {
+    const db = getDb();
+    const existing = await db.select().from(claims).where(
+      and(
+        eq(claims.merchantId, input.merchantId),
+        eq(claims.status, "pending")
+      )
+    ).limit(1);
+    if (existing[0]) {
+      throw new Error("There is already a pending claim for this business");
+    }
+    const result = await db.insert(claims).values({
+      ...input,
+      status: "pending",
+      createdAt: /* @__PURE__ */ new Date()
+    }).returning({ id: claims.id });
+    return result[0];
+  }),
+  // Get claims by merchant
+  getByMerchant: publicQuery.input(external_exports.object({ merchantId: external_exports.number() })).query(async ({ input }) => {
+    const db = getDb();
+    return db.select().from(claims).where(eq(claims.merchantId, input.merchantId)).orderBy(desc(claims.createdAt));
+  }),
+  // Approve claim (admin)
+  approve: publicQuery.input(
+    external_exports.object({
+      id: external_exports.number(),
+      reviewedBy: external_exports.number()
+    })
+  ).mutation(async ({ input }) => {
+    const db = getDb();
+    await db.update(claims).set({
+      status: "approved",
+      reviewedBy: input.reviewedBy,
+      reviewedAt: /* @__PURE__ */ new Date()
+    }).where(eq(claims.id, input.id));
+    const claim = await db.select().from(claims).where(eq(claims.id, input.id)).limit(1);
+    if (claim[0]) {
+      await db.update(merchants).set({
+        status: "claimed",
+        claimedBy: claim[0].userId,
+        claimedAt: /* @__PURE__ */ new Date()
+      }).where(eq(merchants.id, claim[0].merchantId));
+    }
+    return { success: true };
+  }),
+  // Reject claim (admin)
+  reject: publicQuery.input(
+    external_exports.object({
+      id: external_exports.number(),
+      reviewedBy: external_exports.number(),
+      rejectionReason: external_exports.string()
+    })
+  ).mutation(async ({ input }) => {
+    const db = getDb();
+    await db.update(claims).set({
+      status: "rejected",
+      reviewedBy: input.reviewedBy,
+      reviewedAt: /* @__PURE__ */ new Date(),
+      rejectionReason: input.rejectionReason
+    }).where(eq(claims.id, input.id));
+    return { success: true };
+  }),
+  // List all claims (admin)
+  list: publicQuery.input(external_exports.object({ status: external_exports.string().optional() }).optional()).query(async ({ input }) => {
+    const db = getDb();
+    const conditions = [];
+    if (input?.status) {
+      conditions.push(eq(claims.status, input.status));
+    }
+    return db.select().from(claims).where(conditions.length > 0 ? and(...conditions) : void 0).orderBy(desc(claims.createdAt));
+  })
+});
+
 // api/router.ts
 var appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
@@ -32605,7 +32877,9 @@ var appRouter = createRouter({
   search: searchRouter,
   sindbad: sindbadRouter,
   admin: adminRouter,
-  adminAuth: adminAuthRouter
+  adminAuth: adminAuthRouter,
+  subscription: subscriptionRouter,
+  claim: claimRouter
 });
 
 // node_modules/hono/dist/utils/cookie.js
